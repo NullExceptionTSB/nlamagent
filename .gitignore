@@ -58,6 +58,7 @@ config.log
 config.status
 configure~
 configure
+Makefile
 Makefile.in
 autom4te.cache
 mkaux
