@@ -62,3 +62,6 @@ Makefile.in
 autom4te.cache
 mkaux
 aclocal.m4
+
+# vscode
+.vscode

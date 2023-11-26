@@ -102,7 +102,9 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
-am_nlamagent_OBJECTS = src/main.$(OBJEXT)
+am_nlamagent_OBJECTS = src/nlamagent-main.$(OBJEXT) \
+	src/nlamagent-config.$(OBJEXT) src/nlamagent-crypto.$(OBJEXT) \
+	src/nlamagent-ssl.$(OBJEXT)
 nlamagent_OBJECTS = $(am_nlamagent_OBJECTS)
 nlamagent_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_$(V))
@@ -120,8 +122,14 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.
 depcomp = $(SHELL) $(top_srcdir)/mkaux/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = src/$(DEPDIR)/main.Po
+am__depfiles_remade = src/$(DEPDIR)/nlamagent-config.Po \
+	src/$(DEPDIR)/nlamagent-crypto.Po \
+	src/$(DEPDIR)/nlamagent-main.Po src/$(DEPDIR)/nlamagent-ssl.Po
 am__mv = mv -f
+AM_V_lt = $(am__v_lt_$(V))
+am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
+am__v_lt_0 = --silent
+am__v_lt_1 = 
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 AM_V_CC = $(am__v_CC_$(V))
@@ -161,8 +169,8 @@ am__define_uniq_tagged_files = \
 AM_RECURSIVE_TARGETS = cscope
 am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/mkaux/compile \
 	$(top_srcdir)/mkaux/depcomp $(top_srcdir)/mkaux/install-sh \
-	$(top_srcdir)/mkaux/missing COPYING INSTALL README.md \
-	mkaux/compile mkaux/depcomp mkaux/install-sh mkaux/missing
+	$(top_srcdir)/mkaux/missing README.md mkaux/compile \
+	mkaux/depcomp mkaux/install-sh mkaux/missing
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -210,7 +218,7 @@ INSTALL_SCRIPT = ${INSTALL}
 INSTALL_STRIP_PROGRAM = $(install_sh) -c -s
 LDFLAGS = 
 LIBOBJS = 
-LIBS = 
+LIBS = -lws2_32 -lconfig -ljson-c -lcrypto -lssl 
 LTLIBOBJS = 
 MAKEINFO = ${SHELL} '/home/NullException/nlamagent/mkaux/missing' makeinfo
 MKDIR_P = /usr/bin/mkdir -p
@@ -270,7 +278,8 @@ target_alias =
 top_build_prefix = 
 top_builddir = .
 top_srcdir = .
-nlamagent_SOURCES = src/main.c
+nlamagent_SOURCES = src/main.c src/config.c src/crypto.c src/ssl.c
+nlamagent_CPPFLAGS = -Iinclude
 all: all-am
 
 .SUFFIXES:
@@ -356,7 +365,14 @@ src/$(am__dirstamp):
 src/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) src/$(DEPDIR)
 	@: > src/$(DEPDIR)/$(am__dirstamp)
-src/main.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
+src/nlamagent-main.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+src/nlamagent-config.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+src/nlamagent-crypto.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+src/nlamagent-ssl.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
 
 nlamagent$(EXEEXT): $(nlamagent_OBJECTS) $(nlamagent_DEPENDENCIES) $(EXTRA_nlamagent_DEPENDENCIES) 
 	@rm -f nlamagent$(EXEEXT)
@@ -369,7 +385,10 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-include src/$(DEPDIR)/main.Po # am--include-marker
+include src/$(DEPDIR)/nlamagent-config.Po # am--include-marker
+include src/$(DEPDIR)/nlamagent-crypto.Po # am--include-marker
+include src/$(DEPDIR)/nlamagent-main.Po # am--include-marker
+include src/$(DEPDIR)/nlamagent-ssl.Po # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -392,6 +411,62 @@ am--depfiles: $(am__depfiles_remade)
 #	$(AM_V_CC)source='$<' object='$@' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(AM_V_CC_no)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+
+src/nlamagent-main.o: src/main.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT src/nlamagent-main.o -MD -MP -MF src/$(DEPDIR)/nlamagent-main.Tpo -c -o src/nlamagent-main.o `test -f 'src/main.c' || echo '$(srcdir)/'`src/main.c
+	$(AM_V_at)$(am__mv) src/$(DEPDIR)/nlamagent-main.Tpo src/$(DEPDIR)/nlamagent-main.Po
+#	$(AM_V_CC)source='src/main.c' object='src/nlamagent-main.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o src/nlamagent-main.o `test -f 'src/main.c' || echo '$(srcdir)/'`src/main.c
+
+src/nlamagent-main.obj: src/main.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT src/nlamagent-main.obj -MD -MP -MF src/$(DEPDIR)/nlamagent-main.Tpo -c -o src/nlamagent-main.obj `if test -f 'src/main.c'; then $(CYGPATH_W) 'src/main.c'; else $(CYGPATH_W) '$(srcdir)/src/main.c'; fi`
+	$(AM_V_at)$(am__mv) src/$(DEPDIR)/nlamagent-main.Tpo src/$(DEPDIR)/nlamagent-main.Po
+#	$(AM_V_CC)source='src/main.c' object='src/nlamagent-main.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o src/nlamagent-main.obj `if test -f 'src/main.c'; then $(CYGPATH_W) 'src/main.c'; else $(CYGPATH_W) '$(srcdir)/src/main.c'; fi`
+
+src/nlamagent-config.o: src/config.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT src/nlamagent-config.o -MD -MP -MF src/$(DEPDIR)/nlamagent-config.Tpo -c -o src/nlamagent-config.o `test -f 'src/config.c' || echo '$(srcdir)/'`src/config.c
+	$(AM_V_at)$(am__mv) src/$(DEPDIR)/nlamagent-config.Tpo src/$(DEPDIR)/nlamagent-config.Po
+#	$(AM_V_CC)source='src/config.c' object='src/nlamagent-config.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o src/nlamagent-config.o `test -f 'src/config.c' || echo '$(srcdir)/'`src/config.c
+
+src/nlamagent-config.obj: src/config.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT src/nlamagent-config.obj -MD -MP -MF src/$(DEPDIR)/nlamagent-config.Tpo -c -o src/nlamagent-config.obj `if test -f 'src/config.c'; then $(CYGPATH_W) 'src/config.c'; else $(CYGPATH_W) '$(srcdir)/src/config.c'; fi`
+	$(AM_V_at)$(am__mv) src/$(DEPDIR)/nlamagent-config.Tpo src/$(DEPDIR)/nlamagent-config.Po
+#	$(AM_V_CC)source='src/config.c' object='src/nlamagent-config.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o src/nlamagent-config.obj `if test -f 'src/config.c'; then $(CYGPATH_W) 'src/config.c'; else $(CYGPATH_W) '$(srcdir)/src/config.c'; fi`
+
+src/nlamagent-crypto.o: src/crypto.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT src/nlamagent-crypto.o -MD -MP -MF src/$(DEPDIR)/nlamagent-crypto.Tpo -c -o src/nlamagent-crypto.o `test -f 'src/crypto.c' || echo '$(srcdir)/'`src/crypto.c
+	$(AM_V_at)$(am__mv) src/$(DEPDIR)/nlamagent-crypto.Tpo src/$(DEPDIR)/nlamagent-crypto.Po
+#	$(AM_V_CC)source='src/crypto.c' object='src/nlamagent-crypto.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o src/nlamagent-crypto.o `test -f 'src/crypto.c' || echo '$(srcdir)/'`src/crypto.c
+
+src/nlamagent-crypto.obj: src/crypto.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT src/nlamagent-crypto.obj -MD -MP -MF src/$(DEPDIR)/nlamagent-crypto.Tpo -c -o src/nlamagent-crypto.obj `if test -f 'src/crypto.c'; then $(CYGPATH_W) 'src/crypto.c'; else $(CYGPATH_W) '$(srcdir)/src/crypto.c'; fi`
+	$(AM_V_at)$(am__mv) src/$(DEPDIR)/nlamagent-crypto.Tpo src/$(DEPDIR)/nlamagent-crypto.Po
+#	$(AM_V_CC)source='src/crypto.c' object='src/nlamagent-crypto.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o src/nlamagent-crypto.obj `if test -f 'src/crypto.c'; then $(CYGPATH_W) 'src/crypto.c'; else $(CYGPATH_W) '$(srcdir)/src/crypto.c'; fi`
+
+src/nlamagent-ssl.o: src/ssl.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT src/nlamagent-ssl.o -MD -MP -MF src/$(DEPDIR)/nlamagent-ssl.Tpo -c -o src/nlamagent-ssl.o `test -f 'src/ssl.c' || echo '$(srcdir)/'`src/ssl.c
+	$(AM_V_at)$(am__mv) src/$(DEPDIR)/nlamagent-ssl.Tpo src/$(DEPDIR)/nlamagent-ssl.Po
+#	$(AM_V_CC)source='src/ssl.c' object='src/nlamagent-ssl.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o src/nlamagent-ssl.o `test -f 'src/ssl.c' || echo '$(srcdir)/'`src/ssl.c
+
+src/nlamagent-ssl.obj: src/ssl.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT src/nlamagent-ssl.obj -MD -MP -MF src/$(DEPDIR)/nlamagent-ssl.Tpo -c -o src/nlamagent-ssl.obj `if test -f 'src/ssl.c'; then $(CYGPATH_W) 'src/ssl.c'; else $(CYGPATH_W) '$(srcdir)/src/ssl.c'; fi`
+	$(AM_V_at)$(am__mv) src/$(DEPDIR)/nlamagent-ssl.Tpo src/$(DEPDIR)/nlamagent-ssl.Po
+#	$(AM_V_CC)source='src/ssl.c' object='src/nlamagent-ssl.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(nlamagent_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o src/nlamagent-ssl.obj `if test -f 'src/ssl.c'; then $(CYGPATH_W) 'src/ssl.c'; else $(CYGPATH_W) '$(srcdir)/src/ssl.c'; fi`
 
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
@@ -668,7 +743,10 @@ clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-		-rm -f src/$(DEPDIR)/main.Po
+		-rm -f src/$(DEPDIR)/nlamagent-config.Po
+	-rm -f src/$(DEPDIR)/nlamagent-crypto.Po
+	-rm -f src/$(DEPDIR)/nlamagent-main.Po
+	-rm -f src/$(DEPDIR)/nlamagent-ssl.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -716,7 +794,10 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-		-rm -f src/$(DEPDIR)/main.Po
+		-rm -f src/$(DEPDIR)/nlamagent-config.Po
+	-rm -f src/$(DEPDIR)/nlamagent-crypto.Po
+	-rm -f src/$(DEPDIR)/nlamagent-main.Po
+	-rm -f src/$(DEPDIR)/nlamagent-ssl.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
