@@ -50,3 +50,15 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Automake rubbish
+src/.deps
+src/.dirstamp
+config.log
+config.status
+configure~
+configure
+Makefile.in
+autom4te.cache
+mkaux
+aclocal.m4
