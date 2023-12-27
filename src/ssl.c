@@ -39,8 +39,18 @@ INT WINAPI SslInit() {
 
     const SSL_METHOD* ssl_method = TLS_server_method();
     _SSLCONTEXT = SSL_CTX_new(ssl_method);
-    SSL_CTX_set_timeout(_SSLCONTEXT, SSL_TIMEOUT);
-    if (_SSLCONTEXT == NULL) return -3;
+    //SSL_CTX_set_timeout(_SSLCONTEXT, SSL_TIMEOUT);
+    SSL_CTX_set_options(_SSLCONTEXT, 
+        SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION);
+    /*
+    SSL_CTX_set_cipher_list(_SSLCONTEXT, 
+        "HIGH:!aNULL:!kRSA:!PSK:!SRP:!MD5:!RC4");
+    */
+    if (_SSLCONTEXT == NULL) {
+        puts(ERR_error_string(ERR_get_error(), NULL));
+        return -3;
+    }
+    return 0;
 }
 
 INT WINAPI SslInitPem(char* cert_path, char* key_path) {
@@ -49,4 +59,5 @@ INT WINAPI SslInitPem(char* cert_path, char* key_path) {
     
     if (SSL_CTX_use_PrivateKey_file(_SSLCONTEXT, key_path, SSL_FILETYPE_PEM)
         <= 0) return -11;
+        
 }
