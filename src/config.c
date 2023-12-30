@@ -4,8 +4,6 @@
 
 config_t* _CONFIG;
 
-
-
 void CfgInitDefaults() {
     config_setting_t* root = config_root_setting(_CONFIG);
 

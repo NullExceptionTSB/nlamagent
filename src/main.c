@@ -70,6 +70,9 @@ VOID WINAPI SrvError(LPCWSTR lpError, DWORD dwCode) {
  */
 VOID WINAPI SrvMain() {
     #ifndef SKIPSERVICE
+    //
+    // set constant cdir
+    //
     //fixes an issue with NTAUTH setting cdir to System32 on all processes
     //by default
     WCHAR fn[MAX_PATH];
@@ -80,7 +83,9 @@ VOID WINAPI SrvMain() {
     *slash = L'\0';
     SetCurrentDirectoryW(fn2);
 
+    //
     //service initialization stuff
+    //
 	hServStatus = RegisterServiceCtrlHandlerW(SRV_NAME,
          SrvControlHandler);
 	ServStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
@@ -94,19 +99,25 @@ VOID WINAPI SrvMain() {
 	SetServiceStatus(hServStatus, &ServStatus);
     #endif
 
+    //
     //init stop signalization
+    //
 	hStopEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
     hStopReadyEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
 
     if (!hStopEvent || !hStopReadyEvent)
         ExitProcess(-1);
 	
+    //
     //open config 
+    //
     INT32 cfg_code = CfgInit();
     if (cfg_code < 0)
         ExitProcess(cfg_code);
-    
+
+    //
     //init logger
+    //
     int file_log_flag = 1;
     char* log_file = CFG_LOG_DEFAULT;
 
@@ -138,7 +149,9 @@ VOID WINAPI SrvMain() {
     LogSetOutFile(log_file);
     LogInit(logmode);
 
+    //
     //init libssl and libcrypto
+    //
     INT32 ssl_code = SslInit();
     if (ssl_code < 0)
         ExitProcess(ssl_code);
@@ -168,7 +181,6 @@ VOID WINAPI SrvMain() {
         if ((!cert_path) || (!key_path)) 
             LogMessageA("Invalid certificate paths");
         
-        //printf("cert_path %s, key_path %p\n", cert_path, key_path);
         SslInitPem(cert_path, key_path);
     } else {
         LogMessageA("Certificates disabled.\
@@ -184,14 +196,15 @@ There is no fallback, connections will fail!");
             GetLastError()
         );
 
+    //
     //start ipv6 socket listener
-
     //
     //there is on ipv6 support yet!
-    //
 
     #ifndef SKIPSERVICE
+    //
     //init finished, singal that srv is running
+    //
     ServStatus.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(hServStatus, &ServStatus);
 
@@ -201,26 +214,36 @@ There is no fallback, connections will fail!");
         };
     #endif 
 
-    //test for exit signal
+
     #ifdef SKIPSERVICE
         Sleep(-1);
     #else
+        //
+        //wait for exit signal
+        //
         while (WaitForSingleObject(hStopEvent, -1) == WAIT_TIMEOUT);
 
+        //
+        //exitting, wait for listeners to stop
+        //
         DWORD dwWaitStatus = 
             WaitForMultipleObjects(2, hListeners, TRUE, STOP_TIMEOUT);
 
         if (dwWaitStatus == WAIT_TIMEOUT) {
+            //timeout, force quit listeners
             LogMessageA("Listeners hung, force quitting...\n");
             TerminateThread(hListeners[0], WAIT_TIMEOUT);
             TerminateThread(hListeners[0], WAIT_TIMEOUT);
         }
     #endif
-    
+
+    //
+    //gracefully exit
+    //
+    LogMessageA("Exitting gracefully...\n");
     LogClose();
     CloseHandle(hStopEvent);
-
-    LogMessageA("Exitting gracefully...\n");
+    
     SetEvent(hStopReadyEvent);
     CloseHandle(hStopReadyEvent);
 }
