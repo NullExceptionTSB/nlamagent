@@ -1,4 +1,4 @@
-OutFile "..\setup.exe"
+OutFile "..\nlamagent_setup_VERSION.exe"
 SetCompress force
 SetCompressor /SOLID /FINAL lzma
 XPStyle on
@@ -68,15 +68,21 @@ Name "NLAM Agent"
 
 InstallDir "C:\Program Files\NLAM Agent"
 
-!macro TestFunction UN
+!macro macRemoveAllFiles UN
 Function ${UN}RemoveAllFiles
    	Delete $INSTDIR\nlamagent.exe
 	Delete $INSTDIR\uninstall.exe
+
+	DetailPrint "Removing service..."
+
+	SimpleSC::StopService "NLAMAgent" 1 30
+	SimpleSC::RemoveService "NLAMAgent"
+
 	RMDir /r /REBOOTOK $INSTDIR
 FunctionEnd
 !macroend
-!insertmacro TestFunction "" 
-!insertmacro TestFunction "un."
+!insertmacro macRemoveAllFiles "" 
+!insertmacro macRemoveAllFiles "un."
 
 Function Rollback
 	DetailPrint "Error, rolling back changes.."
@@ -108,6 +114,7 @@ Section
 SectionEnd
 
 Section "uninstall"
+	SetDetailsPrint lastused
 	Call un.RemoveAllFiles
 SectionEnd
 
