@@ -6,6 +6,9 @@
 #include <adshlp.h>
 #include <packet.h>
 
+#define ADSI_PREFIX     L"WinNT://"
+#define ADSI_PREFLN     ((sizeof(ADSI_PREFIX)/sizeof((ADSI_PREFIX)[0]))-1)
+
 LPWSTR iPerformAstrToWstr(LPSTR str) {
     int len = strlen(str);
     LPWSTR wstr = calloc(strlen(str)+1, sizeof(WCHAR));
@@ -14,13 +17,13 @@ LPWSTR iPerformAstrToWstr(LPSTR str) {
 }
 
 LPWSTR iPerformAssemblePath(LPSTR qn) {
-    const INT winntlen = 8;
+    const INT winntlen = ADSI_PREFLN;
     INT ntplen = strlen(qn);
 
     LPWSTR lpRet = calloc(winntlen+ntplen+1, sizeof(WCHAR));
     if (!lpRet) 
         return NULL;
-    memcpy(lpRet, L"WinNT://", winntlen*sizeof(WCHAR));
+    memcpy(lpRet, ADSI_PREFIX, winntlen*sizeof(WCHAR));
 
     MultiByteToWideChar(
         CP_ACP, MB_PRECOMPOSED, 
