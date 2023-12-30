@@ -14,24 +14,19 @@
 
 //#include <arpa/inet.h>
 
+#include <net.h>
+#include <log.h>
 #include <config.h>
 #include <ssl.h>
-#include <crypto.h>
 #include <opts.h>
-#include <packet.h>
-#include <perform.h>
 
 //makes exe a standalone executable instead of a service executable
 #define SKIPSERVICE
 
 SERVICE_STATUS ServStatus = { 0 };
 SERVICE_STATUS_HANDLE hServStatus = NULL;
+BOOLEAN bStop = FALSE;
 HANDLE hStopEvent = NULL, hStopReadyEvent = NULL;
-
-typedef struct _NET_CLIENT {
-    int socket;
-    SSL* ssl;
-}NET_CLIENT, *LPNET_CLIENT;
 
 /**
  * @brief WinAPI service control message handler
@@ -43,10 +38,14 @@ typedef struct _NET_CLIENT {
 VOID WINAPI SrvControlHandler(DWORD dwReason) {
 	switch (dwReason) {
         case SERVICE_CONTROL_STOP:
+            LogMessageA("Server stopping...");
             SetEvent(hStopEvent);
+            bStop = TRUE;
             ServStatus.dwCurrentState = SERVICE_STOPPED;
+
+
             SetServiceStatus(hServStatus, &ServStatus);	
-            WaitForSingleObject(hStopReadyEvent, STOP_TIMEOUT);
+            WaitForSingleObject(hStopReadyEvent, -1);
             //ExitProcess(0);
             break;
         case SERVICE_CONTROL_CONTINUE:
@@ -57,191 +56,10 @@ VOID WINAPI SrvControlHandler(DWORD dwReason) {
 }
 
 VOID WINAPI SrvError(LPCWSTR lpError, DWORD dwCode) {
-
-}
-
-VOID WINAPI SrvIpv4Server(LPNET_CLIENT lpClient) {
-    CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_SPEED_OVER_MEMORY);
-    
-    SSL* ssl = lpClient->ssl;
-    char* buffer = calloc(PKT_MAX, 1);
-    char* reply = "!What\n";
-
-    int terminated = 0;
-    while (!terminated) {
-        reply = "!What\n";
-        size_t read = SSL_read(ssl, buffer, PKT_MAX);
-
-        if (read == -1) { 
-            int ssl_error = SSL_get_error(ssl, read);
-            if (ssl_error == SSL_ERROR_SYSCALL) {
-                switch (WSAGetLastError()) {
-                    case WSAETIMEDOUT:
-                        puts("[V4SV] timed out");
-                        reply = "!TimedOut\n";
-                        terminated = 1;
-                        break;
-                }
-            } else {
-                reply = "!NetErr\n";
-                goto end;
-            }
-        }
-        if (terminated) break;
-        //receive data
-        if (read == 0) 
-            break;
-
-        printf("[V4SV]: %s", buffer);
-        if (buffer[0] == '{') {
-            NLPACKET* pkt = PktParse(buffer, read);
-            if (!pkt) {
-                reply = "!PktInvalid\n";
-                printf("[V4SV] Packet parser error 0x%08X\n", GetLastError());
-                goto end;
-            }
-
-            HRESULT hr = PerformPacket(pkt);
-            
-            reply = (hr != S_OK) ? "!OpFail\n" : ".OK\n";
-            printf("[V4SV] Operation %u HRESULT: 0x%08X\n", pkt->opCode, hr);
-
-            PktFree(pkt);
-        }
-        else if (!strncmp(buffer, "END", 3)) {
-            reply = ".OK\n";
-            terminated = 1;
-        }
-
-        end:
-        SSL_write(ssl, reply, strlen(reply));
-        memset(buffer, 0, PKT_MAX);
-    }
-    puts("[V4SV] server instance shutting down");
-    SSL_shutdown(ssl);
-    close(lpClient->socket);
-    SSL_free(ssl);
-    free(buffer);
-}
-
-VOID WINAPI SrvIpv4Listener(DWORD port) {
-    puts(">>IPV4");
-    puts("IPV4: init WinSock");
-
-    int mode = 1;
-    struct timeval timeout;
-    timeout.tv_sec = SOCK_TIMEOUT;
-    timeout.tv_usec = 0;
-
-    WSADATA winsockData;
-    int status = WSAStartup(MAKEWORD(2,2), &winsockData);
-    if (status) {
-        status = WSAGetLastError();
-        printf("WSAStartup returned %i, <<IPV4\n", status);
-        ExitThread(status);
-    }
-
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.S_un.S_addr = htonl(0); 
-
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0) {
-        printf("socket returned %i, <<IPV4\n", sock);
-        ExitThread(sock);
-    }
-
-    status = 
-        bind(sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
-
-    if (status < 0) {
-        printf("bind returned %i, <<IPV4\n", WSAGetLastError());
-        ExitThread(status);
-    }
-
-    status = listen(sock, 1);
-
-    if (status < 0) {
-        printf("listen returned %i, <<IPV4\n", WSAGetLastError());
-        ExitThread(status);
-    }
-
-    puts("IPV4: Init OK, waiting for inbounds");
-    WSASetLastError(0);
-    for (;;) {
-        struct sockaddr_in cl_addr;
-        int sockaddrsz = sizeof(cl_addr);
-
-         
-        SSL* ssl;
-        int client = accept(sock, &cl_addr, &sockaddrsz);
-        
-        if (client < 0) {
-            int wsa_gla = WSAGetLastError();
-            if (wsa_gla == 0) {
-                //no inbound connections
-                Sleep(100);
-                continue;
-            }
-
-            printf("IPV4: accept failed, %i (ret %i)\n", 
-                wsa_gla, client);
-            continue;
-            //ExitThread(client);
-        }
-
-        char* cl_ip = inet_ntoa(cl_addr.sin_addr);
-        printf("IPV4: Inbound connection from %s\n", 
-            cl_ip);
-
-        setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-        //ioctlsocket(client, FIONBIO, &mode);
-
-        ssl = SSL_new(_SSLCONTEXT);
-        if (!ssl) {
-            printf("[V4:%s] SSL_new failed, %s\n", cl_ip,
-                ERR_error_string(ERR_get_error(), NULL));
-            continue;
-        }
-
-        if (!SSL_set_fd(ssl, client)) {
-            printf("[V4:%s] SSL_set_fd failed, %s\n", cl_ip,
-                ERR_error_string(ERR_get_error(), NULL));
-            continue;
-        }
-
-        if (SSL_accept(ssl) <= 0) {
-            // accept failed, handle
-            printf("[V4:%s] SSL_accept failed, %s\n", cl_ip,
-                ERR_error_string(ERR_get_error(), NULL));
-            if (ssl) {
-                SSL_shutdown(ssl);
-                SSL_free(ssl);
-            }
-
-            if (client)
-                close(client);
-
-            continue;
-        }
-
-        if (!SslVerifyVersion(SSL_get_version(ssl))) {
-            // SSL version unacceptable, return error
-            SSL_write(ssl, "!Insecure", 10);
-            SSL_shutdown(ssl);
-            SSL_free(ssl);
-            close(client);
-        }
-
-        // SSL accepted, set callback and return waiting signal
-        //SSL_set_async_callback(ssl, SrvCallbackHandler);
-        LPNET_CLIENT netclient = calloc(1, sizeof(NET_CLIENT));
-        netclient->socket = client;
-        netclient->ssl = ssl;
-        CreateThread(NULL, 0, SrvIpv4Server, netclient, 0, NULL);
-        SSL_write(ssl, "?\n", 1);
-    }
+    LogMessageW(lpError);
+    SetEvent(hStopEvent);
+    WaitForSingleObject(hStopReadyEvent, STOP_TIMEOUT);
+    ExitProcess(dwCode);
 }
 
 /**
@@ -251,15 +69,17 @@ VOID WINAPI SrvIpv4Listener(DWORD port) {
  */
 VOID WINAPI SrvMain() {
     #ifndef SKIPSERVICE
+    //fixes an issue with NTAUTH setting cdir to System32 on all processes
+    //by default
     WCHAR fn[MAX_PATH];
     WCHAR fn2[MAX_PATH];
     LPWSTR* slash;
     GetModuleFileNameW(NULL, fn, sizeof(WCHAR)*MAX_PATH);
     GetFullPathNameW(fn, sizeof(WCHAR)*MAX_PATH, fn2, &slash);
     *slash = L'\0';
-
     SetCurrentDirectoryW(fn2);
 
+    //service initialization stuff
 	hServStatus = RegisterServiceCtrlHandlerW(SRV_NAME,
          SrvControlHandler);
 	ServStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
@@ -272,6 +92,7 @@ VOID WINAPI SrvMain() {
 	ServStatus.dwWin32ExitCode = 0;
 	SetServiceStatus(hServStatus, &ServStatus);
     #endif
+
     //init stop signalization
 	hStopEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
     hStopReadyEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
@@ -284,6 +105,30 @@ VOID WINAPI SrvMain() {
     if (cfg_code < 0)
         ExitProcess(cfg_code);
     
+    //init logger
+    int file_log_flag = 1;
+    char* log_file = CFG_LOG_DEFAULT;
+
+    LOG_MODE logmode = 0;
+
+    config_setting_t* log_setting =
+        config_setting_lookup(_CONFIG->root, "FileLogging");
+    if (log_setting)
+        file_log_flag = config_setting_get_bool(log_setting);
+    
+    log_setting = config_setting_lookup(_CONFIG->root, "LogFilename");
+    if (log_setting)
+        log_file = config_setting_get_string(log_setting);
+
+    logmode |= (log_setting && file_log_flag) ? LOG_FILE : 0;
+
+    log_setting = config_setting_lookup(_CONFIG->root, "StdioLogging");
+    if (log_setting)
+        logmode |= config_setting_get_bool(log_setting) ? LOG_STDIO : 0;
+
+    LogSetOutFile(log_file);
+    LogInit(logmode);
+
     //init libssl and libcrypto
     INT32 ssl_code = SslInit();
     if (ssl_code < 0)
@@ -292,41 +137,59 @@ VOID WINAPI SrvMain() {
     if (ssl_code < 0)
         ExitProcess(ssl_code);
 
-    int use_key = CONFIG_FALSE;
+    int use_cert = CONFIG_FALSE;
     
-    int confstat = config_lookup_bool(_CONFIG, "UseCert", &use_key);
-    use_key &= confstat;
+    int confstat = config_lookup_bool(_CONFIG, "UseCert", &use_cert);
+    use_cert &= confstat;
 
-    if (use_key == CONFIG_TRUE) {
+    if (use_cert == CONFIG_TRUE) {
         //this library straight up doesn't work correctly :-], isn't that nice
-        char* cert_path = "cert.pem", *key_path = "key.pem";
+        char* cert_path = CFG_CERT_DEFAULT, *key_path = CFG_KEY_DEFAULT;
 
-        config_setting_t* set = 
+        config_setting_t* cert_setting = 
             config_setting_lookup(_CONFIG->root, "CertFile");
         
-        if (set)
-            cert_path = config_setting_get_string(set);
+        if (cert_setting)
+            cert_path = config_setting_get_string(cert_setting);
 
-        set = config_setting_lookup(_CONFIG->root, "CertKeyFile");
-        if (set)
-            key_path = config_setting_get_string(set);
+        cert_setting = config_setting_lookup(_CONFIG->root, "CertKeyFile");
+        if (cert_setting)
+            key_path = config_setting_get_string(cert_setting);
 
         if ((!cert_path) || (!key_path)) 
-            puts("Invalid certificate paths");
+            LogMessageA("Invalid certificate paths");
         
         //printf("cert_path %s, key_path %p\n", cert_path, key_path);
         SslInitPem(cert_path, key_path);
+    } else {
+        LogMessageA("Certificates disabled.\
+There is no fallback, connections will fail!");
     }
 
     //start ipv4 socket listener
-    CreateThread(NULL, 0, SrvIpv4Listener, 16969, 0, NULL);
+    DWORD dwIpv4Tid = 0;
+    CreateThread(NULL, 0, NetIpv4Listener, 16969, 0, &dwIpv4Tid);
+    if (dwIpv4Tid)
+        LogMessageA(
+            "Failed to open IPv4 listener! Lasterror: 0x%08x\n", 
+            GetLastError()
+        );
 
-    //open ipv6 socket
+    //start ipv6 socket listener
+
+    //
+    //there is on ipv6 support yet!
+    //
 
     #ifndef SKIPSERVICE
     //init finished, singal that srv is running
     ServStatus.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(hServStatus, &ServStatus);
+
+    HANDLE hListeners[2] = { 
+            OpenThread(SYNCHRONIZE | THREAD_TERMINATE, FALSE, dwIpv4Tid),
+            NULL //OpenThread(SYNCHRONIZE | THREAD_TERMINATE, FALSE, dwIpv6Tid)
+        };
     #endif 
 
     //test for exit signal
@@ -334,14 +197,23 @@ VOID WINAPI SrvMain() {
         Sleep(-1);
     #else
         while (WaitForSingleObject(hStopEvent, -1) == WAIT_TIMEOUT);
+
+        DWORD dwWaitStatus = 
+            WaitForMultipleObjects(2, hListeners, TRUE, STOP_TIMEOUT);
+
+        if (dwWaitStatus == WAIT_TIMEOUT) {
+            LogMessageA("Listeners hung, force quitting...\n");
+            TerminateThread(hListeners[0], WAIT_TIMEOUT);
+            TerminateThread(hListeners[0], WAIT_TIMEOUT);
+        }
     #endif
     
-    
-
-    //kill all children and exit
+    LogClose();
     CloseHandle(hStopEvent);
+
+    LogMessageA("Exitting gracefully...\n");
+    SetEvent(hStopReadyEvent);
     CloseHandle(hStopReadyEvent);
-    
 }
 /**
  * @brief WinMain entry point for windows, tranfers control to SrvMain
@@ -364,5 +236,4 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     StartServiceCtrlDispatcherW(stEntry);
     #endif
     SrvMain();
-    
 }

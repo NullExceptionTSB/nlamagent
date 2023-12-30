@@ -6,7 +6,11 @@
 #include <adshlp.h>
 #include <packet.h>
 
+#ifdef ADSI_LDAP_PROVIDER
+#define ADSI_PREFIX     L"LDAP://"
+#else
 #define ADSI_PREFIX     L"WinNT://"
+#endif
 #define ADSI_PREFLN     ((sizeof(ADSI_PREFIX)/sizeof((ADSI_PREFIX)[0]))-1)
 
 LPWSTR iPerformAstrToWstr(LPSTR str) {
