@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <wchar.h>
 
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
@@ -46,7 +47,7 @@ VOID WINAPI SrvControlHandler(DWORD dwReason) {
             ServStatus.dwCurrentState = SERVICE_STOPPED;
             SetServiceStatus(hServStatus, &ServStatus);	
             WaitForSingleObject(hStopReadyEvent, STOP_TIMEOUT);
-            ExitProcess(0);
+            //ExitProcess(0);
             break;
         case SERVICE_CONTROL_CONTINUE:
             ServStatus.dwCurrentState = SERVICE_RUNNING;
@@ -57,22 +58,6 @@ VOID WINAPI SrvControlHandler(DWORD dwReason) {
 
 VOID WINAPI SrvError(LPCWSTR lpError, DWORD dwCode) {
 
-}
-// do not use
-VOID WINAPI SrvCallbackHandler(SSL* s, void* arg) {
-    char* buffer = calloc(PKT_MAX, 1);
-    char* reply = "!What";
-    int datarecv = 0;
-    size_t read = SSL_read(s, buffer, PKT_MAX);
-    //receive data
-    datarecv = read > 0;
-    if (read < 128) goto end;
-    printf("[V4CH] %s\n", buffer);
-
-    end:
-    if (datarecv) 
-        SSL_write(s, reply, strlen(reply));
-    free(buffer);
 }
 
 VOID WINAPI SrvIpv4Server(LPNET_CLIENT lpClient) {
@@ -266,6 +251,15 @@ VOID WINAPI SrvIpv4Listener(DWORD port) {
  */
 VOID WINAPI SrvMain() {
     #ifndef SKIPSERVICE
+    WCHAR fn[MAX_PATH];
+    WCHAR fn2[MAX_PATH];
+    LPWSTR* slash;
+    GetModuleFileNameW(NULL, fn, sizeof(WCHAR)*MAX_PATH);
+    GetFullPathNameW(fn, sizeof(WCHAR)*MAX_PATH, fn2, &slash);
+    *slash = L'\0';
+
+    SetCurrentDirectoryW(fn2);
+
 	hServStatus = RegisterServiceCtrlHandlerW(SRV_NAME,
          SrvControlHandler);
 	ServStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;

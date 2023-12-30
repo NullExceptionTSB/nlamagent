@@ -31,14 +31,36 @@ typedef struct _NLAMAGENT_PKT_ADDUSER {
     char* resvd;
 } NLP_ADDUSER;
 
-typedef struct _NLAMAGENT_PKT_CHPASSWD {
-    char* user_ntpath;
-
+/**
+ * @brief Extended parameters for an OP_SET_PASSWD packet
+ * \note All fields in this structure are mandatory
+ */
+typedef struct _NLAMAGENT_PKT_SETPASSWD {
+    //! The AD QN of the target user
+    char* user_qn;
+    //! The new password
     char* new_passwd;
-} NLP_CHPASSWD;
+} NLP_SETPASSWD;
 
+/**
+ * @brief Extended parameters for an OP_CHANGE_PASSWD packet
+ * \note All fields in this structure are mandatory
+ */
+typedef struct _NLAMAGENT_PKT_CHANGEPASSWD {
+    //! The AD QN of the target user
+    char* user_qn;
+    //! The old password
+    char* old_passwd;
+    //! The new password
+    char* new_passwd;
+} NLP_CHANGEPASSWD;
+
+/**
+ * @brief Extended parameters for an OP_DEL_USER packet
+ * \note All fields in this structure are mandatory
+ */
 typedef struct _NLAMAGENT_PKT_DELUSER {
-    char* user_dn;
+    //! The AD QN of the target user
     char* user_qn;
 } NLP_DELUSER;
 
