@@ -18,7 +18,11 @@ void CfgInitDefaults() {
         *log_file =
             config_setting_add(root, "LogFilename", CONFIG_TYPE_STRING),
         *log_into_stdio =
-            config_setting_add(root, "StdioLogging", CONFIG_TYPE_BOOL);
+            config_setting_add(root, "StdioLogging", CONFIG_TYPE_BOOL),
+        *log_verbose =
+            config_setting_add(root, "Verbose", CONFIG_TYPE_BOOL),
+        *log_debug =
+            config_setting_add(root, "DebugLogging", CONFIG_TYPE_BOOL);
 
     config_setting_set_bool(use_cert, CONFIG_TRUE);
     config_setting_set_bool(log_into_file, CONFIG_TRUE);
@@ -26,6 +30,9 @@ void CfgInitDefaults() {
     config_setting_set_string(cert_key, CFG_KEY_DEFAULT);
     config_setting_set_string(log_file, CFG_LOG_DEFAULT);
     config_setting_set_string(log_into_stdio, CONFIG_TRUE);
+    
+    config_setting_set_bool(log_verbose, CONFIG_TRUE);
+    config_setting_set_bool(log_debug, CONFIG_FALSE);
 
     config_write_file(_CONFIG, CFG_FILENAME);
 }

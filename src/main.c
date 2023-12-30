@@ -21,6 +21,7 @@
 #include <opts.h>
 
 //makes exe a standalone executable instead of a service executable
+//intended for debugging, highly discouraged in prod
 #define SKIPSERVICE
 
 SERVICE_STATUS ServStatus = { 0 };
@@ -126,6 +127,14 @@ VOID WINAPI SrvMain() {
     if (log_setting)
         logmode |= config_setting_get_bool(log_setting) ? LOG_STDIO : 0;
 
+    log_setting = config_setting_lookup(_CONFIG->root, "Verbose");
+    if (log_setting)
+        logmode |= config_setting_get_bool(log_setting) ? LOG_VERBOSE : 0;
+
+    log_setting = config_setting_lookup(_CONFIG->root, "DebugLogging");
+    if (log_setting)
+        logmode |= config_setting_get_bool(log_setting) ? LOG_DEBUG : 0;
+
     LogSetOutFile(log_file);
     LogInit(logmode);
 
@@ -169,7 +178,7 @@ There is no fallback, connections will fail!");
     //start ipv4 socket listener
     DWORD dwIpv4Tid = 0;
     CreateThread(NULL, 0, NetIpv4Listener, 16969, 0, &dwIpv4Tid);
-    if (dwIpv4Tid)
+    if (!dwIpv4Tid)
         LogMessageA(
             "Failed to open IPv4 listener! Lasterror: 0x%08x\n", 
             GetLastError()

@@ -13,6 +13,7 @@ LPCSTR      _lpszOutFile = NULL;
 LOG_MODE    _modeLog;
 
 FILE*       _fileLog;
+
 VOID WINAPI LogSetOutFile(LPCSTR lpFile) {
     _lpszOutFile = lpFile;
 }
@@ -68,7 +69,7 @@ VOID WINAPI LogMessageW(LPCWSTR lpMessage, ...) {
 VOID WINAPI LogVerboseA(LPCSTR lpMessage, ...) {
     if (!(_modeLog & LOG_VERBOSE))
         return;
-
+    
     va_list ptr;
     va_start(ptr, lpMessage);
 
