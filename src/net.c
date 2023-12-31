@@ -18,13 +18,54 @@ extern BOOLEAN bStop;
 
 DWORD _dwNet4Clients = 0, _dwNet6Clients = 0;
 
-VOID WINAPI NetIpv4Server(LPNET_CLIENT lpClient) {
+VOID WINAPI iNetIpv4LogPacket(NLPACKET* pkt, char* addr) {
+    NLP_SETPASSWD* pex_set_passwd = pkt->specData;
+    NLP_CHANGEPASSWD* pex_ch_passwd = pkt->specData;
+    NLP_DELUSER* pex_deluser = pkt->specData;
+    NLP_ADDUSER* pex_adduser = pkt->specData;
+    switch (pkt->opCode) {
+        case OP_NOOP:
+            LogVerboseA("[V4S:%s] Received noop\n", addr);
+            break;
+        case OP_SET_PASSWD:
+            LogVerboseA(
+                "[V4S:%s] Setting password for %s\n", addr,
+                pex_set_passwd->user_dn
+            );
+            break;
+        case OP_CHANGE_PASSWD:
+            LogVerboseA(
+                "[V4S:%s] Changing password for %s\n", addr,
+                pex_ch_passwd->user_dn
+            );
+            break;
+        case OP_DEL_USER:
+            LogVerboseA(
+                "[V4S:%s] Deleting user at %s\n", addr,
+                pex_deluser->user_dn
+            );
+            break;
+        case OP_ADD_USER:
+            LogVerboseA(
+                "[V4S:%s] Creating user '%s' at %s\n", addr,
+                pex_adduser->user_cn,
+                pex_adduser->path_dn
+            );
+            break;
+        default:
+            LogVerboseA("[V4S:%s] Reveived unsupported packet\n", addr);
+            break;
+    }
+}
+
+VOID WINAPI iNetIpv4Server(LPNET_CLIENT lpClient) {
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_SPEED_OVER_MEMORY);
     _dwNet4Clients++;
     
     SSL* ssl = lpClient->ssl;
     char* buffer = calloc(PKT_MAX, 1);
     char* reply = "!What\n";
+    char* client_ip = inet_ntoa(lpClient->cl_addr.sin_addr);
 
     int terminated = 0;
     while (!terminated) {
@@ -36,12 +77,13 @@ VOID WINAPI NetIpv4Server(LPNET_CLIENT lpClient) {
             if (ssl_error == SSL_ERROR_SYSCALL) {
                 switch (WSAGetLastError()) {
                     case WSAETIMEDOUT:
-                        puts("[V4SV] timed out");
+                        LogVerboseA("[V4S:%s] Timed out\n", client_ip);
                         reply = "!TimedOut\n";
                         terminated = 1;
                         break;
                 }
             } else {
+                LogVerboseA("[V4S:%s] Network error\n", client_ip);
                 reply = "!NetErr\n";
                 goto end;
             }
@@ -51,19 +93,23 @@ VOID WINAPI NetIpv4Server(LPNET_CLIENT lpClient) {
         if (read == 0) 
             break;
 
-        LogDebugA("[V4SV]: %s", buffer);
+        LogDebugA("[V4S:%s]: %s", client_ip, buffer);
         if (buffer[0] == '{') {
             NLPACKET* pkt = PktParse(buffer, read);
             if (!pkt) {
                 DWORD dwErr = GetLastError();
                 snprintf(buffer, PKT_MAX, "!PktInvalid:0x%08X\n", dwErr);
+
                 reply = buffer;
                 LogDebugA
-                    ("[V4SV] Packet parser error 0x%08X\n", dwErr);
-                
+                    ("[V4S:%s] Packet parser error 0x%08X\n", 
+                        client_ip, dwErr
+                    );
+                LogVerboseA("[V4S:%s] Invalid packet received\n", client_ip);
                 goto end;
             }
 
+            iNetIpv4LogPacket(pkt, client_ip);
             HRESULT hr = PerformPacket(pkt);
             
             if (hr != S_OK) {
@@ -84,7 +130,7 @@ VOID WINAPI NetIpv4Server(LPNET_CLIENT lpClient) {
         SSL_write(ssl, reply, strlen(reply));
         memset(buffer, 0, PKT_MAX);
     }
-    LogDebugA("[V4SV] server instance shutting down\n");
+    LogVerboseA("[V4S:%s] Disconnected\n", client_ip);
 
     CoUninitialize();
     SSL_shutdown(ssl);
@@ -96,7 +142,6 @@ VOID WINAPI NetIpv4Server(LPNET_CLIENT lpClient) {
 
 DWORD WINAPI NetIpv4Listener(DWORD port) {
     LogDebugA(">>IPV4\n");
-    LogDebugA("IPV4: init WinSock\n");
 
     int mode = 1;
     struct timeval timeout;
@@ -208,7 +253,8 @@ DWORD WINAPI NetIpv4Listener(DWORD port) {
         LPNET_CLIENT netclient = calloc(1, sizeof(NET_CLIENT));
         netclient->socket = client;
         netclient->ssl = ssl;
-        CreateThread(NULL, 0, NetIpv4Server, netclient, 0, NULL);
+        netclient->cl_addr = cl_addr;
+        CreateThread(NULL, 0, iNetIpv4Server, netclient, 0, NULL);
         SSL_write(ssl, "?\n", 1);
     }
 

@@ -27,10 +27,6 @@ typedef struct _NLAMAGENT_PACKET {
     void* specData;
 } NLPACKET;
 
-typedef struct _NLAMAGENT_PKT_ADDUSER {
-    char* resvd;
-} NLP_ADDUSER;
-
 /**
  * @brief Extended parameters for an OP_SET_PASSWD packet
  * \note All fields in this structure are mandatory
@@ -63,6 +59,37 @@ typedef struct _NLAMAGENT_PKT_DELUSER {
     //! The AD QN of the target user
     char* user_dn;
 } NLP_DELUSER;
+
+typedef enum _NLAMAGENT_PROPERTY_TYPE {
+    NLPROP_NULL,
+    NLPROP_BOOLEAN,
+    NLPROP_INT,
+    NLPROP_STR
+} NL_PROP_TYPE;
+typedef struct _NLAMAGENT_PROPERTY {
+    NL_PROP_TYPE type;
+    char* name;
+    void* value;
+} NL_PROPERTY;
+
+/**
+ * @brief 
+ * \note
+ */
+typedef struct _NLAMAGENT_PKT_ADDUSER {
+    //! DN to the container in which the user will be created
+    char* path_dn;
+    //! the CN of the new user
+    char* user_cn;
+    //! the SAM name of the new user
+    char* user_sam;
+    //! the password of the new user
+    char* user_passwd;
+    //! the ammount of additional properties
+    size_t property_count;
+    //! array of properties (type NL_PROPERTY) of size property_count elements
+    NL_PROPERTY* properties;
+} NLP_ADDUSER;
 
 typedef enum _NLAMAGENT_PKT_PARSE_ERROR {
     NLAM_PKT_INVALID_OPCODE = 0xA5000000,

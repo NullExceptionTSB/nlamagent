@@ -23,25 +23,222 @@ LPWSTR iPerformAstrToWstr(LPSTR str) {
     return wstr;
 }
 
-LPWSTR iPerformAssemblePath(LPSTR qn) {
-    const INT winntlen = ADSI_PREFLN;
-    INT ntplen = strlen(qn);
+LPWSTR iPerformAssemblePath(LPSTR obj) {
+    INT pathlen = strlen(obj);
 
-    LPWSTR lpRet = calloc(winntlen+ntplen+1, sizeof(WCHAR));
+    LPWSTR lpRet = calloc(ADSI_PREFLN+pathlen+1, sizeof(WCHAR));
     if (!lpRet) 
         return NULL;
-    memcpy(lpRet, ADSI_PREFIX, winntlen*sizeof(WCHAR));
-
-    MultiByteToWideChar(
-        CP_ACP, MB_PRECOMPOSED, 
-        qn, ntplen, lpRet+winntlen, ntplen+1
-    );
-
+    
+    swprintf(lpRet, ADSI_PREFLN+pathlen+1, ADSI_PREFIX L"%s", obj);
+    
     return lpRet;
 }
 
+HRESULT iPerformAssignProperty(NL_PROPERTY* prop, IADsUser* usr) {
+    if (prop->type == NLPROP_NULL) 
+        return S_OK;
+
+    VARIANT var;
+
+    HRESULT hrRet = S_OK;
+
+    BSTR bstrName = NULL;
+    BSTR bstrVal = NULL;
+
+    LPWSTR lpStrval = NULL;
+
+    LPWSTR lpName = iPerformAstrToWstr(prop->name);
+    if (!lpName)
+        return 0x80070000 | ERROR_NOT_ENOUGH_MEMORY;
+    bstrName = SysAllocString(lpName);
+    if (!bstrName) {
+        hrRet = 0x80070000 | ERROR_NOT_ENOUGH_MEMORY;
+        goto fail;
+    }
+
+    VariantInit(&var);
+    printf("adding property: %s (type %u)\n", prop->name, prop->type);
+
+    switch (prop->type) {
+        case NLPROP_BOOLEAN:
+            printf("type: boolean, val %s\n", *((int*)(prop->value)) ? "true" : "false");
+            V_BOOL(&var) = *((int*)(prop->value));
+            V_VT(&var) = VT_BOOL;
+            break;
+        case NLPROP_INT:
+            printf("type: int, val %i\n", *((int*)(prop->value)));
+            V_I4(&var) = *((int*)(prop->value));
+            V_VT(&var) = VT_I4;
+            break;
+        case NLPROP_STR:
+            
+            lpStrval = iPerformAstrToWstr(prop->value);
+            wprintf(L"type: str, val %ls\n", lpStrval);
+            if (!lpStrval) {
+                hrRet = 0x80070000 | ERROR_NOT_ENOUGH_MEMORY;
+                goto fail;
+            }
+
+            bstrVal = SysAllocString(lpStrval);
+            if (!bstrVal) {
+                hrRet = 0x80070000 | ERROR_NOT_ENOUGH_MEMORY;
+                goto fail;
+            }
+
+            V_BSTR(&var) = bstrVal;
+            V_VT(&var) = VT_BSTR;
+            break;
+        default:
+            //should not happen :-]
+            return E_FAIL;
+    }
+
+    hrRet = usr->lpVtbl->Put(usr, bstrName, var);
+
+    fail:
+    if (lpName) 
+        free(lpName);
+    if (lpStrval)
+        free(lpStrval);
+    if (bstrName) 
+        SysFreeString(bstrName);
+    if (bstrVal)
+        SysFreeString(bstrVal);
+    return hrRet;
+}
+
 HRESULT iPerformAddUser(NLPACKET* pkt) {
-    //stub
+    HRESULT hr = 0x80070000 | ERROR_NOT_ENOUGH_MEMORY;
+    NLP_ADDUSER* i = pkt->specData;
+
+    puts(i->path_dn);
+    LPWSTR lpPath = iPerformAssemblePath(i->path_dn);
+
+    IADsContainer* cont = NULL;
+    IDispatch* dispatch = NULL;
+    IADsUser* usr = NULL;
+
+    if (!lpPath)
+        goto fail;
+
+    size_t szName = 3+strlen(i->user_cn)+1;
+    LPWSTR lpName = calloc(szName, sizeof(WCHAR));
+    if (!lpName) 
+        goto fail;
+
+    swprintf(lpName, szName, L"CN=%s", i->user_cn);    
+    //converting astring parameters to wstring
+    LPWSTR lpSamName = iPerformAstrToWstr(i->user_sam);
+    if (!lpSamName)
+        goto fail;
+
+    LPWSTR lpPassword = iPerformAstrToWstr(i->user_passwd);
+    if (!lpPassword)
+        goto fail;
+
+    //initialize bstrings
+    BSTR bstrClass = SysAllocString(L"user");
+    if (!bstrClass)
+        goto fail;
+
+    BSTR bstrName = SysAllocString(lpName);
+    if (!bstrName)
+        goto fail;
+    
+    BSTR bstrSamName = SysAllocString(lpSamName);
+    if (!bstrSamName)
+        goto fail;
+
+    BSTR bstrSamProp = SysAllocString(L"sAMAccountName");
+    if (!bstrSamProp)
+        goto fail;
+    
+    BSTR bstrPasswd = SysAllocString(lpPassword);
+    if (!bstrPasswd)
+        goto fail;
+    puts("a");
+    //
+    //ADSI operations
+    //
+    //open target container
+
+    hr = ADsGetObject(lpPath, &IID_IADsContainer, &cont);
+
+    wprintf(L"cont = %p, hresult = 0x%08X, path = %ls\n", cont, hr, lpPath);
+    if (hr != S_OK)
+        goto fail;
+    
+    //create user
+    
+    hr = cont->lpVtbl->Create(cont, bstrClass, bstrName, &dispatch);
+    if (hr != S_OK)
+        goto fail;
+    
+    //open user interface
+    
+    hr = dispatch->lpVtbl->QueryInterface(dispatch, &IID_IADsUser, &usr);
+    if (hr != S_OK)
+        goto fail;
+    
+    //set SAM name
+    VARIANT var;
+    VariantInit(&var);
+    V_BSTR(&var) = bstrSamName;
+    V_VT(&var) = VT_BSTR;
+    
+    hr = usr->lpVtbl->Put(usr, bstrSamProp, var);
+    if (hr != S_OK)
+        goto fail;
+    
+    //commit user
+    hr = usr->lpVtbl->SetInfo(usr);
+
+    //set the rest of parameters
+    for (size_t j = 0; j < i->property_count; j++) {
+        hr = iPerformAssignProperty(&(i->properties[j]), usr);
+        if (hr != S_OK) {
+            puts("it failed");
+            goto fail;   
+        }
+    }
+
+    //set password
+    hr = usr->lpVtbl->SetPassword(usr, bstrPasswd);
+    if (hr != S_OK)
+        goto fail;
+
+    //commit user (again)
+    hr = usr->lpVtbl->SetInfo(usr);
+    fail:
+
+    if (lpPath)
+        free(lpPath);
+    if (lpName)
+        free(lpName);
+    if (lpSamName)
+        free(lpSamName);
+    if (lpPassword)
+        free(lpPassword);
+
+    if (bstrClass)
+        SysFreeString(bstrClass);
+    if (bstrName)
+        SysFreeString(bstrName);
+    if (bstrSamName)
+        SysFreeString(bstrSamName);
+    if (bstrSamProp)
+        SysFreeString(bstrSamProp);
+    if (bstrPasswd)
+        SysFreeString(bstrPasswd);
+
+    if (cont)
+        cont->lpVtbl->Release(cont);
+    if (dispatch)
+        dispatch->lpVtbl->Release(dispatch);
+    if (usr)
+        usr->lpVtbl->Release(usr);
+    return hr;
 }
 
 //! perform function for OP_DEL_USER
@@ -50,57 +247,43 @@ HRESULT iPerformDelUser(NLPACKET* pkt) {
     NLP_DELUSER* i = pkt->specData;
 
     LPWSTR lpPath = iPerformAssemblePath(i->user_dn);
-    if (!lpPath) goto fail;
-
-    LPSTR lpszDomain = malloc(strlen(i->user_dn)+1);
-    memcpy(lpszDomain, i->user_dn, strlen(i->user_dn)+1);
-
-    //behold: you can't delete the an object using a method on the object
-    //you have to use a method on the container holding it
-    //you also can't get the container using a method on the child object
-    //hence, you see this
-    char* slash = strchr(lpszDomain, '/');
-    if (!slash) {
-        hr = E_FAIL;
+    if (!lpPath) 
         goto fail;
-    }
-    *slash = '\0';
-    puts(lpszDomain);
 
-    LPWSTR lpDomain = iPerformAssemblePath(lpszDomain);
-    LPWSTR lpName = iPerformAstrToWstr(slash+1);
-    IEnumVARIANT* varenum = NULL;
-
-    IADsDomain* domain = NULL;
-    hr = ADsGetObject(lpDomain, &IID_IADsDomain, &domain);
+    IADsUser* usr = NULL;
+    hr = ADsGetObject(lpPath, &IID_IADsUser, &usr);
     if (hr != S_OK) 
         goto fail;
 
-    IADs* obj = NULL;
-    VARIANT* a;
-    while (varenum->lpVtbl->Next(varenum, 1, &obj, NULL) == S_OK) {
-        if (!obj) continue;
-        BSTR b = NULL;
-        obj->lpVtbl->get_Class(obj, &b);
-        wprintf("%ls\n", b);
-    }
+    BSTR bstrParent = NULL;
+    BSTR bstrName = NULL;
+    hr = usr->lpVtbl->get_Parent(usr, &bstrParent);
+    if (hr != S_OK)
+        goto fail;
+    hr = usr->lpVtbl->get_Name(usr, &bstrName);
+    if (hr != S_OK)
+        goto fail;
 
+    IADsContainer* cont = NULL;
+    hr = ADsGetObject(bstrParent, &IID_IADsContainer, &cont);
+    if (hr != S_OK)
+        goto fail;
 
-    BSTR name = SysAllocString(lpName);
-
-    //hr = domain->lpVtbl->Delete(domain, NULL, name);
-
+    hr = cont->lpVtbl->Delete(cont, NULL, bstrName);
+    
     fail:
-    if (lpszDomain)
-        free(lpszDomain);
-    if (lpDomain)
-        free(lpDomain);
     if (lpPath)
         free(lpPath);
-        /*
+    if (bstrParent)
+        SysFreeString(bstrParent);
+    if (bstrName)
+        SysFreeString(bstrName);
+        
     if (usr)
         usr->lpVtbl->Release(usr);
-*/
+    if (cont)
+        cont->lpVtbl->Release(cont);
+
     return hr;
 }
 
@@ -120,8 +303,10 @@ HRESULT iPerformChangePasswd(NLPACKET* pkt) {
     if (!lpPath) 
         return 0x80070000 | ERROR_NOT_ENOUGH_MEMORY;
 
+    BSTR debug = NULL;
     IADsUser* usr = NULL;
     hr = ADsGetObject(lpPath, &IID_IADsUser, &usr);
+    usr->lpVtbl->get_Name(usr, &debug);
 
     if (hr != S_OK) 
         goto fail;
@@ -144,7 +329,7 @@ HRESULT iPerformChangePasswd(NLPACKET* pkt) {
     if (pkt->opCode == OP_CHANGE_PASSWD) {
         hr = 0x80070000 | ERROR_NOT_ENOUGH_MEMORY;
         lpOldPass = iPerformAstrToWstr(i2->old_passwd);
-        
+
         if (!lpOldPass) goto fail;
         
         bstrOldPass = SysAllocString(lpOldPass);
@@ -153,7 +338,12 @@ HRESULT iPerformChangePasswd(NLPACKET* pkt) {
         hr = usr->lpVtbl->ChangePassword(usr, bstrOldPass, bstrNewPass);
     } else 
         hr = usr->lpVtbl->SetPassword(usr, bstrNewPass);
-    
+
+    VARIANT var;
+    VariantInit(&var);
+    usr->lpVtbl->Get(usr, SysAllocString(L"userAccountControl"), &var);
+
+    printf("ExtreDebug: %u (%u)\n", V_VT(&var), V_INT(&var));
 
     fail:
     if (usr)

@@ -116,7 +116,7 @@ VOID WINAPI SrvMain() {
         config_setting_lookup(_CONFIG->root, "FileLogging");
     if (log_setting)
         file_log_flag = config_setting_get_bool(log_setting);
-    
+
     log_setting = config_setting_lookup(_CONFIG->root, "LogFilename");
     if (log_setting)
         log_file = config_setting_get_string(log_setting);
@@ -167,7 +167,6 @@ To disable this, change DebugLogging to false in the config file!\n\
     use_cert &= confstat;
 
     if (use_cert == CONFIG_TRUE) {
-        //this library straight up doesn't work correctly :-], isn't that nice
         const char* cert_path = (char*)CFG_CERT_DEFAULT, 
                     *key_path = (char*)CFG_KEY_DEFAULT;
 
@@ -195,7 +194,7 @@ There is no fallback, connections will fail!\n");
     //do not try this at home
     CreateThread(
         NULL, 0, 
-        ((DWORD(*)(DWORD))(NetIpv4Listener)), 
+        NetIpv4Listener, 
         (LPVOID)16969, 0, 
         &dwIpv4Tid
     );

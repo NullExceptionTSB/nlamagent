@@ -11,7 +11,7 @@ typedef enum _NLAM_LOG_MODE {
     //! if set, enables verbose logging
     LOG_VERBOSE     = 0x00000008,
     //! if set, enables debug logging
-    LOG_DEBUG       = 0x00000001
+    LOG_DEBUG       = 0x00000010
 }LOG_MODE;
 
 /**

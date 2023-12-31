@@ -1,0 +1,1 @@
+{"Opcode":"ADD_USER","PathDN":"OU=TestOU,DC=TESTING,DC=NLAM","UserSAM":"user1234","UserCN":"TestUser","Passwd":"Password1234","Properties":{"givenName":"Antonín","sn":"Penyscum","userAccountControl":512}}
