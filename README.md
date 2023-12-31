@@ -7,10 +7,10 @@ Bypasses some issues (namely password manipulation) that occur when using LDAP.
 
 This project links multiple libraries:
 
-[libconfig](https://github.com/hyperrealm/libconfig) available under GNU LGPLv2.1 License
-[json-c](https://github.com/json-c/json-c) available under MIT License
-[OpenSSL](https://www.openssl.org/) available under Apache License v2.0
-Windows API libraries, packaged with Microsoft Windows under a proprietary license
+- [libconfig](https://github.com/hyperrealm/libconfig) available under GNU LGPLv2.1 License
+- [json-c](https://github.com/json-c/json-c) available under MIT License
+- [OpenSSL](https://www.openssl.org/) available under Apache License v2.0
+- Windows API libraries, packaged with Microsoft Windows under a proprietary license
 
 # Build instructions
 
