@@ -1,2 +1,2 @@
-{"Opcode": "DEL_USER","Username": "Testing/TestUser"}
+{"Opcode": "DEL_USER","DN": "CN=Karel Rachot,CN=Users,DC=TESTING,DC=NLAM"}
 END

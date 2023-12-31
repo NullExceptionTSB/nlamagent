@@ -10,23 +10,23 @@ VOID PktiSetPasswdSpecData(NLPACKET* pkt) {
     NLP_SETPASSWD* spec = malloc(sizeof(NLP_SETPASSWD));
     pkt->specData = spec;
 
-    struct json_object* username_obj = 
-        json_object_object_get(pkt->pktBase, "Username");
+    struct json_object* dn_obj = 
+        json_object_object_get(pkt->pktBase, "DN");
     struct json_object* passwd_obj =
         json_object_object_get(pkt->pktBase, "NewPassword");
     
-    if (!username_obj || !passwd_obj) {
+    if (!dn_obj || !passwd_obj) {
         SetLastError(NLAM_PKT_MANDATORY_FIELD_NOT_SPECIFIED);
         return;
     }
 
-    if (json_object_get_type(username_obj) != json_type_string
+    if (json_object_get_type(dn_obj) != json_type_string
      || json_object_get_type(passwd_obj) != json_type_string) {
         SetLastError(NLAM_PKT_INVALID_FIELD_TYPE);
         return;
     }
 
-    spec->user_qn = json_object_get_string(username_obj);
+    spec->user_dn = json_object_get_string(dn_obj);
     spec->new_passwd = json_object_get_string(passwd_obj);
 
     SetLastError(ERROR_SUCCESS);
@@ -36,26 +36,26 @@ VOID PktiChangePasswdSpecData(NLPACKET* pkt) {
     NLP_CHANGEPASSWD* spec = malloc(sizeof(NLP_CHANGEPASSWD));
     pkt->specData = spec;
 
-    struct json_object* username_obj = 
-        json_object_object_get(pkt->pktBase, "Username");
+    struct json_object* dn_obj = 
+        json_object_object_get(pkt->pktBase, "DN");
     struct json_object* opasswd_obj =
         json_object_object_get(pkt->pktBase, "OldPassword");
     struct json_object* passwd_obj =
         json_object_object_get(pkt->pktBase, "NewPassword");
     
-    if (!opasswd_obj || !username_obj || !passwd_obj) {
+    if (!opasswd_obj || !dn_obj || !passwd_obj) {
         SetLastError(NLAM_PKT_MANDATORY_FIELD_NOT_SPECIFIED);
         return;
     }
 
-    if (json_object_get_type(username_obj) != json_type_string
+    if (json_object_get_type(dn_obj) != json_type_string
      || json_object_get_type(passwd_obj) != json_type_string
      || json_object_get_type(opasswd_obj) != json_type_string) {
         SetLastError(NLAM_PKT_INVALID_FIELD_TYPE);
         return;
     }
 
-    spec->user_qn = json_object_get_string(username_obj);
+    spec->user_dn = json_object_get_string(dn_obj);
     spec->new_passwd = json_object_get_string(passwd_obj);
     spec->old_passwd = json_object_get_string(opasswd_obj);
 
@@ -66,20 +66,20 @@ VOID PktiDelUserSpecData(NLPACKET* pkt) {
     NLP_DELUSER* spec = malloc(sizeof(NLP_DELUSER));
     pkt->specData = spec;
 
-    struct json_object* qn_obj =
-        json_object_object_get(pkt->pktBase, "Username");
+    struct json_object* dn_obj =
+        json_object_object_get(pkt->pktBase, "DN");
 
-    if (!qn_obj) {
+    if (!dn_obj) {
         SetLastError(NLAM_PKT_MANDATORY_FIELD_NOT_SPECIFIED);
         return;
     }
 
-    if (json_object_get_type(qn_obj) != json_type_string) {
+    if (json_object_get_type(dn_obj) != json_type_string) {
         SetLastError(NLAM_PKT_INVALID_FIELD_TYPE);
         return;
     }
 
-    spec->user_qn = json_object_get_string(qn_obj);
+    spec->user_dn = json_object_get_string(dn_obj);
 
     SetLastError(ERROR_SUCCESS);
 }
@@ -94,8 +94,9 @@ VOID PktiFillSpecData(NLPACKET* pkt) {
         case OP_ADD_USER: return PktiAddUserSpecData(pkt);
         case OP_DEL_USER: return PktiDelUserSpecData(pkt);
         case OP_SET_PASSWD: return PktiSetPasswdSpecData(pkt);
+        case OP_CHANGE_PASSWD: return PktiChangePasswdSpecData(pkt);
         default:
-            SetLastError(NLAM_PKT_INVALID_OPCODE);
+            SetLastError(NLAM_PKT_NOT_IMPLEMENTED);
     }
 }
 
@@ -160,9 +161,12 @@ NLPACKET* PktParse(char* packet, int pkt_size) {
     else if (!strcmp(opcode_str, "NOOP")) 
         pkt->opCode = OP_NOOP;
     else {
+        printf("JSONTOK: Unknown opcode %s\n", opcode_str);
         SetLastError(NLAM_PKT_INVALID_OPCODE);
         goto fail;
     }
+
+    printf("JSONTOK: openum %u\n", pkt->opCode);
     
     SetLastError(0);
     PktiFillSpecData(pkt);

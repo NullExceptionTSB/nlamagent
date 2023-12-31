@@ -8,4 +8,5 @@
 extern SSL_CTX* _SSLCONTEXT;
 
 BOOL WINAPI SslVerifyVersion(char* lpSslVersion);
+INT WINAPI SslInit();
 INT WINAPI SslInitPem(char* cert_path, char* key_path);

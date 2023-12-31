@@ -1,3 +1,4 @@
+#include <winsock2.h>
 #include <Windows.h>
 
 #include <openssl/ssl.h>
@@ -54,15 +55,22 @@ VOID WINAPI NetIpv4Server(LPNET_CLIENT lpClient) {
         if (buffer[0] == '{') {
             NLPACKET* pkt = PktParse(buffer, read);
             if (!pkt) {
-                reply = "!PktInvalid\n";
+                DWORD dwErr = GetLastError();
+                snprintf(buffer, PKT_MAX, "!PktInvalid:0x%08X\n", dwErr);
+                reply = buffer;
                 LogDebugA
-                    ("[V4SV] Packet parser error 0x%08X\n", GetLastError());
+                    ("[V4SV] Packet parser error 0x%08X\n", dwErr);
+                
                 goto end;
             }
 
             HRESULT hr = PerformPacket(pkt);
             
-            reply = (hr != S_OK) ? "!OpFail\n" : ".OK\n";
+            if (hr != S_OK) {
+                snprintf(buffer, PKT_MAX, "!OpFail:0x%08X\n", hr);
+                reply = buffer;
+            } else reply = ".OK\n";
+            
             LogDebugA("[V4SV] Operation %u HRESULT: 0x%08X\n", pkt->opCode, hr);
 
             PktFree(pkt);
@@ -80,7 +88,7 @@ VOID WINAPI NetIpv4Server(LPNET_CLIENT lpClient) {
 
     CoUninitialize();
     SSL_shutdown(ssl);
-    close(lpClient->socket);
+    closesocket(lpClient->socket);
     SSL_free(ssl);
     free(buffer);
     _dwNet4Clients--;
@@ -183,7 +191,7 @@ DWORD WINAPI NetIpv4Listener(DWORD port) {
             }
 
             if (client)
-                close(client);
+                closesocket(client);
 
             continue;
         }
@@ -193,11 +201,10 @@ DWORD WINAPI NetIpv4Listener(DWORD port) {
             SSL_write(ssl, "!Insecure", 10);
             SSL_shutdown(ssl);
             SSL_free(ssl);
-            close(client);
+            closesocket(client);
         }
 
-        // SSL accepted, set callback and return waiting signal
-        //SSL_set_async_callback(ssl, SrvCallbackHandler);
+        //SSL OK, create a server
         LPNET_CLIENT netclient = calloc(1, sizeof(NET_CLIENT));
         netclient->socket = client;
         netclient->ssl = ssl;
@@ -207,7 +214,7 @@ DWORD WINAPI NetIpv4Listener(DWORD port) {
 
     shutdown(sock, SD_RECEIVE);
 
-    LogDebugA( 
+    LogMessageA( 
         "[V4] Got stop event, waiting for %u clients to finish...\n", 
         _dwNet4Clients
     );
@@ -215,16 +222,16 @@ DWORD WINAPI NetIpv4Listener(DWORD port) {
     DWORD dwTicks = 0;
     while (_dwNet4Clients) {
         if (!(++dwTicks % 50))
-            LogDebugA(
+            LogMessageA(
                 "[V4] Waiting for %u clients...\n"
             );
         Sleep(100);
     }
 
-    close(sock);
+    closesocket(sock);
     WSACleanup();
 
-    LogDebugA("[V4] Gracefully exitting...");
+    LogMessageA("[V4] Exitting gracefully...\n");
 
     return 0;
 }

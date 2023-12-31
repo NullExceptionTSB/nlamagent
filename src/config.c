@@ -27,7 +27,7 @@ void CfgInitDefaults() {
     config_setting_set_string(cert_file, CFG_CERT_DEFAULT);
     config_setting_set_string(cert_key, CFG_KEY_DEFAULT);
     config_setting_set_string(log_file, CFG_LOG_DEFAULT);
-    config_setting_set_string(log_into_stdio, CONFIG_TRUE);
+    config_setting_set_bool(log_into_stdio, CONFIG_TRUE);
     
     config_setting_set_bool(log_verbose, CONFIG_TRUE);
     config_setting_set_bool(log_debug, CONFIG_FALSE);

@@ -6,6 +6,9 @@
 #include <adshlp.h>
 #include <packet.h>
 
+//note that toggling this macro will break absolutely everything
+#define ADSI_LDAP_PROVIDER
+
 #ifdef ADSI_LDAP_PROVIDER
 #define ADSI_PREFIX     L"LDAP://"
 #else
@@ -38,7 +41,7 @@ LPWSTR iPerformAssemblePath(LPSTR qn) {
 }
 
 HRESULT iPerformAddUser(NLPACKET* pkt) {
-
+    //stub
 }
 
 //! perform function for OP_DEL_USER
@@ -46,11 +49,11 @@ HRESULT iPerformDelUser(NLPACKET* pkt) {
     HRESULT hr = 0x80070000 | ERROR_NOT_ENOUGH_MEMORY;
     NLP_DELUSER* i = pkt->specData;
 
-    LPWSTR lpPath = iPerformAssemblePath(i->user_qn);
+    LPWSTR lpPath = iPerformAssemblePath(i->user_dn);
     if (!lpPath) goto fail;
 
-    LPSTR lpszDomain = malloc(strlen(i->user_qn)+1);
-    memcpy(lpszDomain, i->user_qn, strlen(i->user_qn)+1);
+    LPSTR lpszDomain = malloc(strlen(i->user_dn)+1);
+    memcpy(lpszDomain, i->user_dn, strlen(i->user_dn)+1);
 
     //behold: you can't delete the an object using a method on the object
     //you have to use a method on the container holding it
@@ -111,7 +114,7 @@ HRESULT iPerformChangePasswd(NLPACKET* pkt) {
     LPSTR lpszNewPassword = 
         (pkt->opCode == OP_CHANGE_PASSWD) ? i2->new_passwd : i->new_passwd;
     LPSTR lpszUserQn = 
-        (pkt->opCode == OP_CHANGE_PASSWD) ? i2->user_qn : i->user_qn;
+        (pkt->opCode == OP_CHANGE_PASSWD) ? i2->user_dn : i->user_dn;
 
     LPWSTR lpPath = iPerformAssemblePath(lpszUserQn);
     if (!lpPath) 
@@ -140,8 +143,8 @@ HRESULT iPerformChangePasswd(NLPACKET* pkt) {
     // avoiding redundant code by doing this
     if (pkt->opCode == OP_CHANGE_PASSWD) {
         hr = 0x80070000 | ERROR_NOT_ENOUGH_MEMORY;
-
         lpOldPass = iPerformAstrToWstr(i2->old_passwd);
+        
         if (!lpOldPass) goto fail;
         
         bstrOldPass = SysAllocString(lpOldPass);
@@ -174,7 +177,7 @@ HRESULT PerformPacket(NLPACKET* pkt) {
         case OP_ADD_USER: return iPerformAddUser(pkt);
         case OP_DEL_USER: return iPerformDelUser(pkt);
         //gangster move
-        case OP_SET_PASSWD: return iPerformChangePasswd(pkt);
+        case OP_SET_PASSWD:
         case OP_CHANGE_PASSWD: return iPerformChangePasswd(pkt);
         default: return ERROR_INVALID_PARAMETER;
     }

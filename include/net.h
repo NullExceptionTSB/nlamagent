@@ -1,4 +1,5 @@
 #pragma once
+#include <openssl/ssl.h>
 
 typedef struct _NET_CLIENT {
     int socket;

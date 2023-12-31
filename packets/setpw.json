@@ -1,2 +1,2 @@
-{"Opcode": "SET_PASSWD","Username": "Testing/TestUser","NewPassword": "Password1234"}
+{"Opcode": "SET_PASSWD","DN": "CN=Karel Rachot,CN=Users,DC=TESTING,DC=NLAM","NewPassword": "PassTest1234"}
 END

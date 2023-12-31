@@ -1,0 +1,2 @@
+{"Opcode": "CHANGE_PASSWD","DN": "CN=Karel Rachot,CN=Users,DC=TESTING,DC=NLAM","OldPassword": "PassTest1234","NewPassword": "Password1234"}
+END

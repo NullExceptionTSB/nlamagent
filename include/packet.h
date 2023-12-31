@@ -36,8 +36,8 @@ typedef struct _NLAMAGENT_PKT_ADDUSER {
  * \note All fields in this structure are mandatory
  */
 typedef struct _NLAMAGENT_PKT_SETPASSWD {
-    //! The AD QN of the target user
-    char* user_qn;
+    //! The AD DN of the target user
+    char* user_dn;
     //! The new password
     char* new_passwd;
 } NLP_SETPASSWD;
@@ -48,7 +48,7 @@ typedef struct _NLAMAGENT_PKT_SETPASSWD {
  */
 typedef struct _NLAMAGENT_PKT_CHANGEPASSWD {
     //! The AD QN of the target user
-    char* user_qn;
+    char* user_dn;
     //! The old password
     char* old_passwd;
     //! The new password
@@ -61,13 +61,14 @@ typedef struct _NLAMAGENT_PKT_CHANGEPASSWD {
  */
 typedef struct _NLAMAGENT_PKT_DELUSER {
     //! The AD QN of the target user
-    char* user_qn;
+    char* user_dn;
 } NLP_DELUSER;
 
 typedef enum _NLAMAGENT_PKT_PARSE_ERROR {
     NLAM_PKT_INVALID_OPCODE = 0xA5000000,
     NLAM_PKT_INVALID_FIELD_TYPE,
-    NLAM_PKT_MANDATORY_FIELD_NOT_SPECIFIED
+    NLAM_PKT_MANDATORY_FIELD_NOT_SPECIFIED,
+    NLAM_PKT_NOT_IMPLEMENTED
 } NLAMAGENT_LASTERROR;
 
 NLPACKET* PktParse(char* packet, int pkt_size);

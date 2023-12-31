@@ -2,17 +2,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <wchar.h>
-
-#include <openssl/ssl.h>
-#include <openssl/bio.h>
-#include <openssl/err.h>
-
-//windows moment
-//#include <sys/socket.h>
-#include <winsock2.h>
-
-//#include <arpa/inet.h>
 
 #include <net.h>
 #include <log.h>
@@ -119,7 +108,7 @@ VOID WINAPI SrvMain() {
     //init logger
     //
     int file_log_flag = 1;
-    char* log_file = CFG_LOG_DEFAULT;
+    char* log_file = (char*)CFG_LOG_DEFAULT;
 
     LOG_MODE logmode = 0;
 
@@ -160,14 +149,17 @@ To disable this, change DebugLogging to false in the config file!\n\
 ====================================================================\n");
 
     //
-    //init libssl and libcrypto
+    //init libssl and ??libcrypto??
     //
     INT32 ssl_code = SslInit();
     if (ssl_code < 0)
         ExitProcess(ssl_code);
+
+    /*
     ssl_code = CrpInit();
     if (ssl_code < 0)
         ExitProcess(ssl_code);
+    */
 
     int use_cert = CONFIG_FALSE;
     
@@ -176,7 +168,8 @@ To disable this, change DebugLogging to false in the config file!\n\
 
     if (use_cert == CONFIG_TRUE) {
         //this library straight up doesn't work correctly :-], isn't that nice
-        char* cert_path = CFG_CERT_DEFAULT, *key_path = CFG_KEY_DEFAULT;
+        const char* cert_path = (char*)CFG_CERT_DEFAULT, 
+                    *key_path = (char*)CFG_KEY_DEFAULT;
 
         config_setting_t* cert_setting = 
             config_setting_lookup(_CONFIG->root, "CertFile");
@@ -199,7 +192,14 @@ There is no fallback, connections will fail!\n");
 
     //start ipv4 socket listener
     DWORD dwIpv4Tid = 0;
-    CreateThread(NULL, 0, NetIpv4Listener, 16969, 0, &dwIpv4Tid);
+    //do not try this at home
+    CreateThread(
+        NULL, 0, 
+        ((DWORD(*)(DWORD))(NetIpv4Listener)), 
+        (LPVOID)16969, 0, 
+        &dwIpv4Tid
+    );
+
     if (!dwIpv4Tid)
         LogMessageA(
             "Failed to open IPv4 listener! Lasterror: 0x%08x\n", 
