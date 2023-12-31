@@ -39,7 +39,7 @@ HANDLE hStopEvent = NULL, hStopReadyEvent = NULL;
 VOID WINAPI SrvControlHandler(DWORD dwReason) {
 	switch (dwReason) {
         case SERVICE_CONTROL_STOP:
-            LogMessageA("Server stopping...");
+            LogMessageA("Server stopping...\n");
             SetEvent(hStopEvent);
             bStop = TRUE;
             ServStatus.dwCurrentState = SERVICE_STOPPED;
@@ -149,6 +149,16 @@ VOID WINAPI SrvMain() {
     LogSetOutFile(log_file);
     LogInit(logmode);
 
+    //notify about enabled debug logging
+    LogDebugA("\
+====================================================================\n\
+                            !!WARNING!!\n\
+Debug logging is enabled! This should NEVER happen on prod!!\n\
+This is a MASSIVE security vulnurability as it exposes plaintext\n\
+passwords in the log files!\n\
+To disable this, change DebugLogging to false in the config file!\n\
+====================================================================\n");
+
     //
     //init libssl and libcrypto
     //
@@ -184,7 +194,7 @@ VOID WINAPI SrvMain() {
         SslInitPem(cert_path, key_path);
     } else {
         LogMessageA("Certificates disabled.\
-There is no fallback, connections will fail!");
+There is no fallback, connections will fail!\n");
     }
 
     //start ipv4 socket listener
