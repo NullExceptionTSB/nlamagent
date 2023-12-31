@@ -73,9 +73,11 @@ Function ${UN}RemoveAllFiles
    	Delete $INSTDIR\nlamagent.exe
 	Delete $INSTDIR\uninstall.exe
 
-	DetailPrint "Removing service..."
+	DetailPrint "Stopping service..."
 
 	SimpleSC::StopService "NLAMAgent" 1 30
+
+	DetailPrint "Removing service..."
 	SimpleSC::RemoveService "NLAMAgent"
 
 	RMDir /r /REBOOTOK $INSTDIR
@@ -93,7 +95,7 @@ Section
 	SetOutPath $INSTDIR
 	SetDetailsPrint lastused
 
-	File ..\nlamagent.exe
+	File ..\nsispack\*.*
 	File ..\dll\*.dll
 
 	WriteUninstaller $INSTDIR\uninstall.exe
