@@ -37,14 +37,16 @@ Additionally, to compile the installer, [NSIS2](https://nsis.sourceforge.io/Down
 
 To create an installer, first compile the project using the instructions under Basic build.
 
-Next, run the `prep-nsis.sh` script. This will package all dependencies and the binary into the staging directory
+Next, run the `prep-nsis.sh` script. This will package all dependencies and the binary into the staging directory.
 
-Lastly, compile `nsis/agent.nsi` (using `makensisw.exe` from NSIS). This will create an installer package in the project's root direcotry 
+Lastly, compile `nsis/agent.nsi` (using `makensisw.exe` from NSIS). This will create an installer package in the project's root directory.
 
 ## PDB debug symbols
 
 To create debug symbols in PDB format, [cv2pdb](https://github.com/rainers/cv2pdb) must be accessible to MSYS2 (under PATH)
 The easiest way to accomplish this is to simply copy the binary archive contents to MSYS2's /bin path.
 
+Note: PDB symbols and the stripped executable are not packaged using `prep-nsis.sh`
+
 With cv2pdb installed and the project compiled, simply run the `mkpdb.sh` script in the project directory. This will output
-`nlamagent-pdb.exe`, an NLAM Agent executable with debug symbols stripped, and `nlamagent.pdb`, the debug symbols in PDB format
+`nlamagent-pdb.exe`, an NLAM Agent executable with debug symbols stripped, and `nlamagent.pdb`, the debug symbols in PDB format.
