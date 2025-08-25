@@ -1,5 +1,5 @@
 # NLAM Agent
-** This project was abandoned as soon as I figured how to fuck around with LDAP enough so AD actually lets me set passwords. I am releasing it to the public domain because there's lots of code and I don't need it anymore. **
+**This project was abandoned as soon as I figured how to fuck around with LDAP enough so AD actually lets me set passwords. I am releasing it to the public domain because there's lots of code and I don't need it anymore.**
 
 Service intended for Microsoft AD servers that allows secure ADSI abstraction accessible from remote hosts.
 
